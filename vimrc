@@ -1,124 +1,200 @@
-"vundle
-set nocompatible
-filetype off
+""""""""""""""""""""""
+" vkudvas' vimrc file
+" 2016/04/02
+""""""""""""""""""""""
 
-"split options
-set splitbelow
-set splitright
+"""""""""""""""""""""""""" Vundle configuration"""""""""""""""""""""""""
+set nocompatible              " required
+filetype off                  " required
 
-"""""""""""" Vundle (Vim Bundles) Start"""""""""""""""""""""
+" set the runtime path to include Vundle and initialize
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
 
-Plugin 'VundleVim/Vundle.vim'
-"git interface
-"Plugin 'tpope/vim-fugitive'
+" alternatively, pass a path where Vundle should install plugins
+"call vundle#begin('~/some/path/here')
+
+" let Vundle manage Vundle, required
+Plugin 'gmarik/Vundle.vim'
+
+" Add all your plugins here (note older versions of Vundle used Bundle
+" instead of Plugin)
+"
+
 "filesystem
 Plugin 'scrooloose/nerdtree'
 Plugin 'jistr/vim-nerdtree-tabs'
-Plugin 'kien/ctrlp.vim' 
-
-"python sytax checker
-"Plugin 'nvie/vim-flake8'
-"Plugin 'vim-scripts/Pydiction'
-"Plugin 'vim-scripts/indentpython.vim'
-"Plugin 'scrooloose/syntastic'
-"
-""auto-completion stuff
-"Plugin 'klen/python-mode'
-""Plugin 'Valloric/YouCompleteMe'
-"Plugin 'klen/rope-vim'
-Plugin 'davidhalter/jedi-vim'
-"Plugin 'ervandew/supertab'
-
-"Colors!!!
-Plugin 'altercation/vim-colors-solarized'
-Plugin 'jnurmine/Zenburn'
-Plugin 'vim-scripts/Wombat'
-
-Plugin 'Lokaltog/powerline', {'rtp': 'powerline/bindings/vim/'}
-
-call vundle#end()
-"""""""""""" Vundle (Vim Bundles) End"""""""""""""""""""""
-
-filetype plugin indent on    " enables filetype detection
-
-"autocomplete
-let g:ycm_autoclose_preview_window_after_completion=1
-
-"custom keys
-let mapleader=";"
-map <leader>g  :YcmCompleter GoToDefinitionElseDeclaration<CR>
-map <C>n: NERDTreeToggle<CR>
-"
-"call togglebg#map("<F5>")
-"colorscheme zenburn
-"set guifont=Monaco:h14
-
 let NERDTreeIgnore=['\.pyc$', '\~$'] "ignore files in NERDTree
+Plugin 'kien/ctrlp.vim'
+Plugin 'jnurmine/Zenburn'
+Plugin 'klen/python-mode'
+Plugin 'majutsushi/tagbar'
+Plugin 'morhetz/gruvbox'
+Plugin 'altercation/vim-colors-solarized'
+Plugin 'davidhalter/jedi-vim'
+Plugin 'vim-airline/vim-airline'
+Plugin 'vim-airline/vim-airline-themes'
 
-"I don't like swap files
+
+" All of your Plugins must be added before the following line
+call vundle#end()            " required
+filetype plugin indent on    " required
+"""""""""""""""""""""""""" Vundle configuration"""""""""""""""""""""""""
+
+"automatic reloading of vimrc
+autocmd! Bufwritepost .vimrc source %
+
+set tags=~/tags
+
+"Set clipboard copy paste
+"set clipboard=unnamed
+
+""" NERDTree settings
+""" //NERDTree settings
+let g:ctrlp_max_depth = 40
+let g:ctrlp_max_files = 10000
+"set background=dark
+""""colorscheme
+"let g:zenburn_old_Visual = 1
+"let g:zenburn_force_dark_Background = 1
+"let g:zenburn_alternate_Visual = 1
+"let g:zenburn_high_Contrast = 1
+"colorscheme zenburn
+let g:solarized_contrast="high"
+"let g:solarized_visibility="high"
+colorscheme solarized
+""""//colorscheme
+
+"Set mouse and backspace
+"set mouse=a
+set bs=2
+" allow backspacing over everything in insert mode
+set backspace=indent,eol,start
+set cursorline
+
+"I dont like swapfiles
 set noswapfile
 
-"turn on numbering
-set nu
+" Rebind <Leader> key
+let mapleader = ";"
 
-"python with virtualenv support
-py << EOF
-import os.path
-import sys
-import vim
-if 'VIRTUA_ENV' in os.environ:
-  project_base_dir = os.environ['VIRTUAL_ENV']
-  sys.path.insert(0, project_base_dir)
-  activate_this = os.path.join(project_base_dir,'bin/activate_this.py')
-  execfile(activate_this, dict(__file__=activate_this))
-EOF
+nmap <C-O> :!git add %<CR><CR>
+nmap <C-X> :files<CR>
+nmap <leader>s :cs find s <C-R>=expand("<cword>")<CR><CR>      
+nmap <leader>g :cs find g <C-R>=expand("<cword>")<CR><CR>      
+nmap <leader>c :cs find c <C-R>=expand("<cword>")<CR><CR>      
+"nmap <C-Q> :norm i//<CR>
+nmap <C-n> :NERDTreeToggle<CR>
+nmap <leader>t :TagbarToggle<CR>
+nmap <leader>n :set invnumber<CR>
+" nmap <C-E> :call ShowFuncName()<CR>
 
-"it would be nice to set tag files by the active virtualenv here
-":set tags=~/mytags "tags for ctags and taglist
-"omnicomplete
-autocmd FileType python set omnifunc=pythoncomplete#Complete
+" easier moving of code blocks
+" Try to go into visual mode (v), thenselect several lines of code here and
+" then press ``>`` several times.
+vnoremap < <gv  " better indentation
+vnoremap > >gv  " better indentation
 
-"------------Start Python PEP 8 stuff----------------
-" Number of spaces that a pre-existing tab is equal to.
-au BufRead,BufNewFile *py,*pyw,*.c,*.h set tabstop=4
-
-"spaces for indents
-au BufRead,BufNewFile *.py,*pyw set shiftwidth=4
-au BufRead,BufNewFile *.py,*.pyw set expandtab
-au BufRead,BufNewFile *.py set softtabstop=4
-
-" Use the below highlight group when displaying bad whitespace is desired.
-highlight BadWhitespace ctermbg=red guibg=red
-
-" Display tabs at the beginning of a line in Python mode as bad.
-au BufRead,BufNewFile *.py,*.pyw match BadWhitespace /^\t\+/
-
-" Make trailing whitespace be flagged as bad.
-au BufRead,BufNewFile *.py,*.pyw,*.c,*.h match BadWhitespace /\s\+$/
-
-" Wrap text after a certain number of characters
-au BufRead,BufNewFile *.py,*.pyw, set textwidth=79
-
-" Use UNIX (\n) line endings.
-au BufNewFile *.py,*.pyw,*.c,*.h set fileformat=unix
-
-" Set the default file encoding to UTF-8:
-set encoding=utf-8
-
-" For full syntax highlighting:
-let python_highlight_all=1
 syntax on
 
-" Keep indentation level from previous line:
-autocmd FileType python set autoindent
 
-" make backspaces more powerfull
-set backspace=indent,eol,start
+set encoding=utf-8
+set number
+set tabstop=4
+set shiftwidth=4
+set expandtab
+"set autochdir
 
+"set 256 color mode in vim
+set t_Co=256
+"set t_AB=^[[48;5;%dm
+"set t_AF=^[[38;5;%dm
 
-nnoremap <space> za 
-"----------Stop python PEP 8 stuff--------------
-colorscheme zenburn
+set ruler
+set showcmd
 
+"
+" if has("vms")
+"   set nobackup          " do not keep a backup file, use versions instead
+"   else
+"     set backup            " keep a backup file
+"     endif
+"     set history=50          " keep 50 lines of command line history
+"     set ruler               " show the cursor position all the time
+"     set showcmd             " display incomplete commands
+"     set incsearch           " do incremental searching
+"
+"     " For Win32 GUI: remove 't' flag from 'guioptions': no tearoff menu
+"     entries
+"     " let &guioptions = substitute(&guioptions, "t", "", "g")
+
+" Don't use Ex mode, use Q for formatting
+" map Q gq
+"
+" " This is an alternative that also works in block mode, but the deleted
+" " text is lost and it only works for putting the current register.
+" "vnoremap p "_dp
+"
+" Switch syntax highlighting on, when the terminal has colors
+" Also switch on highlighting the last used search pattern.
+"if &t_Co > 2 || has("gui_running")
+"   syntax on
+"    set hlsearch
+"   endif
+
+" Only do this part when compiled with support for autocommands.
+if has("autocmd")
+
+  " Enable file type detection.
+  " Use the default filetype settings, so that mail gets 'tw' set to 72,
+  " 'cindent' is on in C files, etc.
+  " Also load indent files, to automatically do language-dependent indenting.
+  filetype plugin indent on
+
+  " Put these in an autocmd group, so that we can delete them easily.
+  augroup vimrcEx
+  au!
+
+  " For all text files set 'textwidth' to 78 characters.
+  autocmd FileType text setlocal textwidth=78
+
+  " When editing a file, always jump to the last known cursor position.
+  " Don't do it when the position is invalid or when inside an event handler
+  " (happens when dropping a file on gvim).
+  " Also don't do it when the mark is in the first line, that is the default
+  " position when opening a file.
+  autocmd BufReadPost *
+    \ if line("'\"") > 1 && line("'\"") <= line("$") |
+    \   exe "normal! g`\"" |
+    \ endif
+
+  augroup END
+
+else
+
+  set autoindent		" always set autoindenting on
+
+endif " has("autocmd")
+
+" Convenient command to see the difference between the current buffer and the
+" file it was loaded from, thus the changes you made.
+" Only define it when not defined already.
+if !exists(":DiffOrig")
+  command DiffOrig vert new | set bt=nofile | r # | 0d_ | diffthis
+		  \ | wincmd p | diffthis
+endif
+
+"show matching braces
+""set showmatch
+set autoindent                " always set autoindenting on
+set ts=4
+set sw=4
+set expandtab
+set cinoptions=:0,(0
+set nobackup
+set wrap
+:au BufWinEnter *.[ch] let w:m2=matchadd('ErrorMsg', '\%81v.', -1)
+set autoread
+set hlsearch
+set incsearch
+set ignorecase
