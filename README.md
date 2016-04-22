@@ -5,3 +5,4 @@ All personal utils for coding...
 - screenrc
 - vim plugins
 - colorschemes
+- terminal-palettes
