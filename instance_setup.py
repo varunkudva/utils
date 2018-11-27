@@ -158,24 +158,28 @@ def setup_networking(hostname, options):
     LOGGER.info("Restarting Network Services")
     os.system("service network restart")
 
+CDH_PREFIX = 'cdh'
+AN_NODE_PREFIX = 'an-node'
+CUSTOM_DATA_DIR = '/tmp/customBlob'
+#CUSTOM_DATA_DIR = '/var/lib/waagent/CustomData'
+MDATA_URL = "http://169.254.169.254/metadata/instance{}?api-version=2017-08-01&format=text"
 
-def get_metadata_instance_name():
+def get_instance_metadata(api):
     """ Get instance name from metadata """
-    mdata_url = "http://169.254.169.254/metadata/instance/compute/name?api-version=2017-08-01&format=text"
+    api_url = MDATA_URL.format(api)
     header = {'Metadata': 'True'}
-    req = urllib2.Request(url=mdata_url, headers=header)
+    req = urllib2.Request(url=api_url, headers=header)
     try:
         resp = urllib2.urlopen(req)
         data = resp.read()
-        name = data.decode("utf-8")
-        return name
+        item = data.decode("utf-8")
+        return item
     except urllib2.HTTPError as e:
         LOGGER.exception("HTTPError = {} {}".format(e.code, e.reason))
-        sys.exit(3)
+        raise Exception("Invalid API call")
     except urllib2.URLError as e:
         LOGGER.exception("URLError = {}".format(e.reason))
-        sys.exit(3)
-
+        raise Exception("Invalid API call")
 
 class AutoVivification(dict):
     """Implementation of perl's autovivification feature."""
@@ -186,12 +190,6 @@ class AutoVivification(dict):
         except KeyError:
             value = self[item] = type(self)()
             return value
-
-CDH_PREFIX = 'cdh'
-AN_NODE_PREFIX = 'an-node'
-CUSTOM_DATA_DIR = '/tmp/customBlob'
-#CUSTOM_DATA_DIR = '/var/lib/waagent/CustomData'
-
 
 def generate_hosts_v2(options):
     """ Generate Hosts File and ansible stuff to distribute"""
@@ -777,7 +775,12 @@ def configure_instance(options):
     # fix_epel_repo()
     fix_ansible()
 
-    options.instance_name = get_metadata_instance_name()
+    try:
+        options.instance_name = get_instance_metadata('/compute/name')
+        options.stack_name = get_instance_metadata('/compute/resourceGroupName')
+    except Exception as e:
+        LOGGER.exception("Cant identify instance {}".format(e))
+        sys.exit(3)
 
     if 'an-node' in options.instance_name:
         # an-node processing
@@ -824,34 +827,18 @@ def configure_instance(options):
     LOGGER.info("This instance will be configured as %s", options.hostname)
     setup_networking(options.hostname, options)
 
-    try:
-        vols_to_stripe, es_drives = get_ephemeral_drives(
-            options.deployment, options.hostname, instances[0].tags['es_drives'])
-    except (AttributeError, UnboundLocalError, KeyError):
-        vols_to_stripe, es_drives = get_ephemeral_drives(options.deployment,
-                                                         options.hostname,
-                                                         None)
-
+    vols_to_stripe, es_drives = get_ephemeral_drives(options.deployment,
+                                                        options.hostname,
+                                                        None)
     if len(es_drives) == 0:
         makedirs('/data')
     else:
         setup_ephemeral_drives(es_drives, options.hostname, vols_to_stripe)
 
-    try:
-        es_drives = setup_ebs_volumes(es_drives,
-                                      get_metadata_item('security-groups/'),
-                                      options.deployment,
-                                      instances[0].tags)
-        if options.hostname is not None:
-            set_aws_hostname("{0}-{1}".format(options.stackname,
-                                              options.hostname),
-                             options.conn,
-                             options.instance_id)
-    except urllib2.HTTPError:
-        es_drives = setup_ebs_volumes(es_drives,
-                                      None,
-                                      options.deployment,
-                                      None)
+    es_drives = setup_ebs_volumes(es_drives,
+                                    None,
+                                    options.deployment,
+                                    None)
     check_mkfs()
 
     LOGGER.info("Mounting newly created filesystems")
@@ -866,10 +853,7 @@ def configure_instance(options):
             LOGGER.info("Ansible is Unable to connect to all nodes")
             sys.exit(1)
 
-    if options.cloud_type == 'aws':
-        set_status_tag(options.instance_id, 'completed', options.conn)
-    else:
-        os.mknod("/tmp/done")
+    os.mknod("/tmp/done")
 
     if os.path.isfile('/boot/initramfs-2.6.32-504.el6.x86_64.img-old') is True:
         try:
