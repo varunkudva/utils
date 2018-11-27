@@ -1,5 +1,17 @@
 #!/usr/bin/python
 # vim:set ts=4 sw=4 expandtab:
+
+'''
+Copyright (C) 2013-2018 by Hewlett Packard Enterprise Development LP
+All Rights Reserved.
+
+This software is an unpublished work and is protected by copyright and
+trade secret law.  Unauthorized copying, redistribution or other use of
+this work is prohibited.
+
+The above notice of copyright on this source code product does not indicate
+any actual or intended publication of such source code.
+'''
 import os
 import re
 import sys
@@ -124,6 +136,7 @@ def get_ip_address(ifname):
                                                        ifname[:15]))[20:24]
     )
 
+
 def setup_networking(hostname, options):
     ''' Configure networking to make CDH Happy '''
     ip_address = get_ip_address('eth0')
@@ -158,6 +171,24 @@ def setup_networking(hostname, options):
     os.system("service network restart")
 
 
+def get_metadata_instance_name():
+    """ Get instance name from metadata """
+    mdata_url = "http://169.254.169.254/metadata/instance/compute/name?api-version=2017-08-01&format=text"
+    header = {'Metadata': 'True'}
+    req = urllib2.Request(url=mdata_url, headers=header)
+    try:
+        resp = urllib2.urlopen(req)
+        data = resp.read()
+        name = data.decode("utf-8")
+        return name
+    except urllib2.HTTPError as e:
+        LOGGER.exception("HTTPError = {} {}".format(e.code, e.reason))
+        sys.exit(3)
+    except urllib2.URLError as e:
+        LOGGER.exception("URLError = {}".format(e.reason))
+        sys.exit(3)
+
+
 class AutoVivification(dict):
     """Implementation of perl's autovivification feature."""
 
@@ -170,6 +201,10 @@ class AutoVivification(dict):
 
 CDH_PREFIX = 'cdh'
 AN_NODE_PREFIX = 'an-node'
+CUSTOM_DATA_DIR = '/tmp/customBlob'
+#CUSTOM_DATA_DIR = '/var/lib/waagent/CustomData'
+
+
 def generate_hosts_v2(options):
     """ Generate Hosts File and ansible stuff to distribute"""
 
@@ -216,18 +251,18 @@ def generate_hosts_v2(options):
     node_count = int(options.custom_data['node_count'])
     for nodeid in xrange(node_count+1):
         node_ip, hostname = None, None
-        if nodeid == 0:
-            # an-node
+        if 'an-node' in instance_name:
             node_ip = get_ip_address('eth0')
             hostname = AN_NODE_PREFIX
         else:
             node_ip = next(ip)
             hostname = '-'.join([CDH_PREFIX, str(nodeid)])
+
         print hostname, node_ip
         filename.write("{0} {1}.{2} {1}\n".format(
             node_ip, hostname, options.domain))
 
-        hosts['ipmap'][nodeid] = hostname
+        hosts['ipmap'][node_ip] = hostname
 
         LOGGER.info("Creating the ansible playbook.. Keeping it in memory")
 
@@ -405,6 +440,7 @@ def generate_hosts(options):
 
     return hosts
 
+
 def get_next_id(directory):
     ''' Get the next logical id in a directory '''
     try:
@@ -577,6 +613,7 @@ def setup_ebs_volumes(es_drives, security_group, deployment, tags):
                             "/grid/{0}".format(get_next_id('/grid')))
 
     return es_drives
+
 
 def setup_ephemeral_drives(es_drives, hostname, vols_to_stripe):
     ''' Setup the Ephemeral Drives '''
@@ -751,9 +788,11 @@ def configure_instance(options):
     # fix_epel_repo()
     fix_ansible()
 
-    if 'an-node' in options.hostname:
+    instance_name = get_metadata_instance_name()
+
+    if 'an-node' in instance_name:
         # an-node processing
-        with open("/tmp/customblob") as fd:
+        with open(CUSTOM_DATA_DIR) as fd:
             options.custom_data = json.loads(fd.read())
 
         print options
@@ -762,7 +801,8 @@ def configure_instance(options):
         hosts['private_key'], hosts['public_key'] = generate_key_pair()
         setup_ssh(hosts)
         print hosts
-        os.system('cat /home/niaraadmin/.ssh/authorized_keys >> /root/.ssh/authorized_keys')
+        os.system(
+            'cat /home/niaraadmin/.ssh/authorized_keys >> /root/.ssh/authorized_keys')
         sleep(60)
 
         release_nodes(hosts)
