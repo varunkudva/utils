@@ -239,7 +239,8 @@ def generate_hosts_v2(options):
     node_count = int(options.custom_data['node_count'])
     for nodeid in xrange(node_count+1):
         node_ip, hostname = None, None
-        if 'an-node' in instance_name:
+        if nodeid == 0:
+            # an-node
             node_ip = get_ip_address('eth0')
             hostname = AN_NODE_PREFIX
         else:
@@ -776,9 +777,9 @@ def configure_instance(options):
     # fix_epel_repo()
     fix_ansible()
 
-    instance_name = get_metadata_instance_name()
+    options.instance_name = get_metadata_instance_name()
 
-    if 'an-node' in instance_name:
+    if 'an-node' in options.instance_name:
         # an-node processing
         with open(CUSTOM_DATA_DIR) as fd:
             options.custom_data = json.loads(fd.read())
