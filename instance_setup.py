@@ -28,6 +28,12 @@ from os.path import expanduser
 from Crypto.PublicKey import RSA
 
 
+CDH_PREFIX = 'cdh'
+AN_NODE_PREFIX = 'an-node'
+#CUSTOM_DATA_DIR = '/var/lib/waagent/CustomData'
+CUSTOM_DATA_DIR = '/tmp/customBlob'
+MDATA_URL = "http://169.254.169.254/metadata/instance{0}?api-version=2017-08-01&format=text"
+
 def generate_key_pair():
     """  Generate public & private RSA key pair """
     key = RSA.generate(2048, os.urandom)
@@ -158,17 +164,12 @@ def setup_networking(hostname, options):
     LOGGER.info("Restarting Network Services")
     os.system("service network restart")
 
-CDH_PREFIX = 'cdh'
-AN_NODE_PREFIX = 'an-node'
-CUSTOM_DATA_DIR = '/tmp/customBlob'
-#CUSTOM_DATA_DIR = '/var/lib/waagent/CustomData'
-MDATA_URL = "http://169.254.169.254/metadata/instance{}?api-version=2017-08-01&format=text"
-
 def get_instance_metadata(api):
-    """ Get instance name from metadata """
+    """ Get instance metadata """
     api_url = MDATA_URL.format(api)
     header = {'Metadata': 'True'}
     req = urllib2.Request(url=api_url, headers=header)
+
     try:
         resp = urllib2.urlopen(req)
         data = resp.read()
@@ -776,13 +777,13 @@ def configure_instance(options):
     fix_ansible()
 
     try:
-        options.instance_name = get_instance_metadata('/compute/name')
+        options.hostname = get_instance_metadata('/compute/name')
         options.stack_name = get_instance_metadata('/compute/resourceGroupName')
     except Exception as e:
         LOGGER.exception("Cant identify instance {}".format(e))
         sys.exit(3)
 
-    if 'an-node' in options.instance_name:
+    if 'an-node' in options.hostname:
         # an-node processing
         with open(CUSTOM_DATA_DIR) as fd:
             options.custom_data = json.loads(fd.read())
