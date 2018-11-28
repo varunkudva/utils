@@ -27,7 +27,6 @@ from threading import Thread
 from os.path import expanduser
 from Crypto.PublicKey import RSA
 
-
 CDH_PREFIX = 'cdh'
 AN_NODE_PREFIX = 'an-node'
 #CUSTOM_DATA_DIR = '/var/lib/waagent/CustomData'
@@ -777,25 +776,23 @@ def configure_instance(options):
     fix_ansible()
 
     try:
-        options.hostname = get_instance_metadata('/compute/name')
+        options.instance_name = get_instance_metadata('/compute/name')
         options.stackname = get_instance_metadata('/compute/resourceGroupName')
     except Exception as e:
         LOGGER.exception("Cant identify instance {}".format(e))
         sys.exit(3)
 
-    if 'an-node' in options.hostname:
-        # an-node processing
+    if 'an-node' in options.instance_name:
+        # an-node
+        options.hostname = AN_NODE_PREFIX
         with open(CUSTOM_DATA_DIR) as fd:
             options.custom_data = json.loads(fd.read())
 
-        print options
         hosts = generate_hosts_v2(options)
 
         hosts['private_key'], hosts['public_key'] = generate_key_pair()
         setup_ssh(hosts)
-        print hosts
-        os.system(
-            'cat /home/niaraadmin/.ssh/authorized_keys >> /root/.ssh/authorized_keys')
+        os.system('cat /home/niaraadmin/.ssh/authorized_keys >> /root/.ssh/authorized_keys')
         sleep(60)
 
         release_nodes(hosts)
@@ -818,7 +815,7 @@ def configure_instance(options):
         with open('/etc/private-vpc', "w") as privatevpc:
             privatevpc.write('1')
     else:
-        # cdh-node processing
+        # cdh-nodes
         options.hostname = generate_my_hostname(options)
 
     LOGGER.info("This instance will be configured as %s", options.hostname)
