@@ -778,7 +778,7 @@ def configure_instance(options):
 
     try:
         options.hostname = get_instance_metadata('/compute/name')
-        options.stack_name = get_instance_metadata('/compute/resourceGroupName')
+        options.stackname = get_instance_metadata('/compute/resourceGroupName')
     except Exception as e:
         LOGGER.exception("Cant identify instance {}".format(e))
         sys.exit(3)
@@ -811,16 +811,12 @@ def configure_instance(options):
             options.ansible_fail = True
             pass
 
-        if os.path.isfile(
-                '/root/.boto') is True or options.cloud_type == 'azure':
-            with open('/etc/stackname', "w") as stackname:
-                stackname.write(options.stackname)
-            stackname.close()
+        with open('/etc/stackname', "w") as fd:
+            fd.write(options.stackname)
 
         # Tells installer that the analyzer is using a ext VPC
-        if options.novpc is True or options.cloud_type == 'azure':
-            with open('/etc/private-vpc', "w") as privatevpc:
-                privatevpc.write('1')
+        with open('/etc/private-vpc', "w") as privatevpc:
+            privatevpc.write('1')
     else:
         # cdh-node processing
         options.hostname = generate_my_hostname(options)
