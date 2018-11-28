@@ -33,6 +33,7 @@ AN_NODE_PREFIX = 'an-node'
 CUSTOM_DATA_DIR = '/tmp/customBlob'
 MDATA_URL = "http://169.254.169.254/metadata/instance{0}?api-version=2017-08-01&format=text"
 
+
 def generate_key_pair():
     """  Generate public & private RSA key pair """
     key = RSA.generate(2048, os.urandom)
@@ -72,16 +73,6 @@ def get_external_ip(self):
             return j.to_text()
 
 
-def hostname_resolves(hostname):
-    ''' Resolve hostname '''
-    try:
-        socket.gethostbyname(hostname)
-        return True
-    except socket.error:
-        LOGGER.exception("Hostname Error")
-        return False
-
-
 def fix_ansible():
     ''' fix the ansible file '''
     massedit.edit_files(
@@ -104,21 +95,11 @@ def fix_epel_repo():
                         dry_run=False)
 
 
-def fix_cloudinit():
-    ''' Fix the cloudinit so that the name stays consistant '''
-    filenames = ['/etc/cloud/cloud.cfg']
-    massedit.edit_files(
-        filenames,
-        ["re.sub(r'preserve_hostname: false', 'preserve_hostname: true', line)"],
-     dry_run=False)
-
-
 def write_file(local_file, content, state):
     ''' Generic write file '''
     LOGGER.info("Attempting to write %s to %s", content, local_file)
     with open(local_file, state) as myfile:
         myfile.write(content)
-    myfile.close()
 
 
 def get_ip_address(ifname):
@@ -163,8 +144,9 @@ def setup_networking(hostname, options):
     LOGGER.info("Restarting Network Services")
     os.system("service network restart")
 
+
 def get_instance_metadata(api):
-    """ Get instance metadata """
+    """ Get instance data using metadata service """
     api_url = MDATA_URL.format(api)
     header = {'Metadata': 'True'}
     req = urllib2.Request(url=api_url, headers=header)
@@ -181,6 +163,7 @@ def get_instance_metadata(api):
         LOGGER.exception("URLError = {}".format(e.reason))
         raise Exception("Invalid API call")
 
+
 class AutoVivification(dict):
     """Implementation of perl's autovivification feature."""
 
@@ -191,7 +174,8 @@ class AutoVivification(dict):
             value = self[item] = type(self)()
             return value
 
-def generate_hosts_v2(options):
+
+def generate_hosts(options):
     """ Generate Hosts File and ansible stuff to distribute"""
 
     hosts = AutoVivification()
@@ -288,141 +272,10 @@ def generate_hosts_v2(options):
     filename.close()
 
     LOGGER.info("Writing the playbook from memory to /tmp/ansible_deploy")
-
     filename = open("/tmp/ansible_deploy", 'w')
-
     for item in yml:
         filename.write("%s\n" % item)
-
     LOGGER.info("Closing the ansible playbook.. We're done here!")
-
-    filename.close()
-
-    return hosts
-
-
-def generate_hosts(options):
-    """ Generate Hosts File and ansible stuff to distribute"""
-    hosts = AutoVivification()
-    try:
-        LOGGER.info("Generating Master Files for %s nodes ", options.node_count)
-    except AttributeError:
-        LOGGER.info("Generating Master Files for the  nodes")
-        hosts['instances'] = options.hosts['instances']
-        hosts['types'] = options.hosts['types']
-    ansible = ['[nodes]']
-    # List of ASGs
-    roles = {'ESNODEASG1': 'es',
-             'ANNODEASG1': 'an-node',
-             'CDHNODEASG1': 'cdh',
-             'CDHNODEASG11': 'cdh'}
-
-    yml = ['---',
-           '- name: Setup hosts',
-           '  hosts: nodes',
-           '  remote_user: root',
-           '  sudo: False',
-           '  tasks:',
-           '  - name: Upload Common Hosts',
-           '    copy: src=/etc/hosts.new dest=/etc/hosts mode=644 force=yes']
-
-    LOGGER.info("Creating new hosts file")
-    filename = open("/etc/hosts.new", 'w')
-
-    LOGGER.info("Opening the existing host file")
-
-    with open("/etc/hosts", "r") as oldfilename:
-        sources = oldfilename.readlines()
-
-    LOGGER.info(
-        "Closing the existing host file.. we've read the file into memory")
-    oldfilename.close()
-
-    LOGGER.info("Creating/Updating the host file")
-
-    for source in sources:
-        alias = re.split('\s+', source)
-        if alias[1] not in hosts and 'localhost' in alias[1]:
-            filename.write(source)
-
-    for instance in hosts['instances']:
-        if hosts['instances'][instance]['type'] == 'NATinstance':
-            continue
-        if hosts['instances'][instance]['type'] == 'ANNODEASG1':
-            hostname = 'an-node'
-        if hosts['instances'][instance]['type'] == 'CDHNODEASG11':
-            hostname = 'cdh-1'
-        if hosts['instances'][instance]['type'] == 'CDHNODEASG1' and hosts[
-                'types'][hosts['instances'][instance]['type']]['current'] == 1:
-            hosts['types'][hosts['instances'][instance]['type']]['current'] += 1
-
-        try:
-            filename.write("{0}  {1}.{2} {1}\n".format(hosts['instances']
-                                                       [instance]
-                                                       ['ip'],
-                                                       hostname,
-                                                       options.domain))
-            hosts['ipmap'][hosts['instances'][instance]['ip']] = hostname
-        except UnboundLocalError:
-            hostname = "{0}-{1}".format(
-                roles[hosts['instances'][instance]['type']], hosts['types'][
-                    hosts['instances'][instance]['type']]['current'])
-
-            filename.write(
-                "{0}  {1}.{2} {1}\n".format(
-                    hosts['instances'][instance]['ip'],
-                    hostname,
-                    options.domain))
-            hosts['types'][hosts['instances'][instance]['type']]['current'] += 1
-            hosts['ipmap'][hosts['instances'][instance]['ip']] = hostname
-
-        LOGGER.info("Creating the ansible playbook.. Keeping it in memory")
-
-        ansible.append(hostname)
-        yml.append('- hosts: {0}'.format(hostname))
-        yml.append('  remote_user: root')
-        yml.append('  sudo: False')
-        yml.append('  tasks:')
-        yml.append('    - name: Set Name {0}'.format(hostname))
-        yml.append(
-            "      copy: content='{0}' dest=/tmp/node mode=644 force=yes".format(hostname[-1]))
-        yml.append('    - name: Disable epel repo')
-        yml.append('      command: /usr/bin/yum-config-manager --disable epel')
-
-        del hostname
-
-    if options.domain == 'niarasystems.com':
-        # This is only needed if the domain name is niarasystems.com.
-        LOGGER.info("Getting the External IP address for bits")
-        ext_ip = get_external_ip('bits.niarasystems.com')
-        filename.write("{0}  {1} {2}\n".format(ext_ip,
-                                               'bits.niarasystems.com',
-                                               'bits'))
-    filename.close()
-
-    LOGGER.info("Replacing the original hosts file with the newly created one")
-    shutil.copy('/etc/hosts.new', '/etc/hosts')
-
-    LOGGER.info("Opening the ansible inventory file for writing")
-
-    filename = open("/tmp/ansible_hosts", 'w')
-
-    for item in ansible:
-        filename.write("%s\n" % item)
-
-    LOGGER.info("Closing the ansible_hosts file.. Done writing")
-
-    filename.close()
-
-    LOGGER.info("Writing the playbook from memory to /tmp/ansible_deploy")
-
-    filename = open("/tmp/ansible_deploy", 'w')
-
-    for item in yml:
-        filename.write("%s\n" % item)
-
-    LOGGER.info("Closing the ansible playbook.. We're done here!")
-
     filename.close()
 
     return hosts
@@ -766,33 +619,36 @@ def release_nodes(hosts):
 
 
 def configure_instance(options):
-    ''' Start of it all '''
+    """ Configure instance for analyzer """
 
-    if options.enableproxy is True:
-        setup_proxy(options)
-        sys.exit(0)
-
-    # fix_epel_repo()
+    #fix_epel_repo()
     fix_ansible()
 
     try:
+        # Get stackname and instance_name using metadata service
         options.instance_name = get_instance_metadata('/compute/name')
         options.stackname = get_instance_metadata('/compute/resourceGroupName')
     except Exception as e:
-        LOGGER.exception("Cant identify instance {}".format(e))
+        LOGGER.exception("Cant identify instance {0}".format(e))
         sys.exit(3)
 
     if 'an-node' in options.instance_name:
         # an-node
         options.hostname = AN_NODE_PREFIX
+
+        while not os.path.isfile(CUSTOM_DATA_DIR):
+            LOGGER.info("Waiting for {0} file".format(CUSTOM_DATA_DIR))
+            sleep(10)
+
         with open(CUSTOM_DATA_DIR) as fd:
             options.custom_data = json.loads(fd.read())
 
-        hosts = generate_hosts_v2(options)
+        hosts = generate_hosts(options)
 
         hosts['private_key'], hosts['public_key'] = generate_key_pair()
         setup_ssh(hosts)
-        os.system('cat /home/niaraadmin/.ssh/authorized_keys >> /root/.ssh/authorized_keys')
+        os.system(
+            'cat /home/niaraadmin/.ssh/authorized_keys >> /root/.ssh/authorized_keys')
         sleep(60)
 
         release_nodes(hosts)
@@ -821,18 +677,19 @@ def configure_instance(options):
     LOGGER.info("This instance will be configured as %s", options.hostname)
     setup_networking(options.hostname, options)
 
+
     vols_to_stripe, es_drives = get_ephemeral_drives(options.deployment,
-                                                        options.hostname,
-                                                        None)
+                                                     options.hostname,
+                                                     None)
     if len(es_drives) == 0:
         makedirs('/data')
     else:
         setup_ephemeral_drives(es_drives, options.hostname, vols_to_stripe)
 
     es_drives = setup_ebs_volumes(es_drives,
-                                    None,
-                                    options.deployment,
-                                    None)
+                                  None,
+                                  options.deployment,
+                                  None)
     check_mkfs()
 
     LOGGER.info("Mounting newly created filesystems")
@@ -856,74 +713,6 @@ def configure_instance(options):
             os.system('tune2fs -m 1 /dev/sda1')
         except OSError:
             pass
-
-
-def setup_proxy(options):
-    """ Configure Proxy Setting for Boto and install script"""
-    home = expanduser("~")
-    LOGGER.info("Setting up proxy")
-
-    try:
-        with open(home + "/.boto", "r") as sources:
-            lines = sources.readlines()
-        sources.close()
-    except:
-        lines = []
-
-    with open(home + "/boto.cfg1", "w") as sources:
-        if len(lines) == 0:
-            sources.write('[Boto]\n')
-            sources.write('Debug = 0\n')
-            sources.write('num_retries = 10\n')
-
-        for line in lines:
-            if 'proxy' in line:
-                continue
-            sources.write(line)
-
-        if options.proxy is not None:
-            sources.write("proxy = {}\n".format(options.proxy))
-        if options.proxy_http_port is not None:
-            sources.write("proxy_port = {}\n".format(options.proxy_http_port))
-        if options.proxy_user is not None:
-            sources.write("proxy_user = {}\n".format(options.proxy_user))
-        if options.proxy_pass is not None:
-            sources.write("proxy_pass = {}\n".format(options.proxy_pass))
-
-    sources.close()
-
-    no_proxy = ['an-node', 'localhost']
-
-    for num in range(1, 26, 1):
-        no_proxy.append("cdh-{0},es-{0}".format(num))
-
-    with open(home + "/.bashrc", "a") as bashrc:
-        bashrc.write('export no_proxy=' + ",".join(no_proxy) + '\n')
-
-        if options.proxy_user is not None and options.proxy_pass is not None:
-            options.proxy_pass = urllib.quote_plus(options.proxy_pass)
-            bashrc.write(
-                'export http_proxy=http://{0}:{1}@{2}:{3}'.format(
-                    options.proxy_user,
-                    options.proxy_pass,
-                    options.proxy,
-                    options.proxy_http_port))
-
-            bashrc.write(
-                'export HTTPS_PROXY=https://{0}:{1}@{2}:{3}'.format(
-                    options.proxy_user,
-                    options.proxy_pass,
-                    options.proxy,
-                    options.proxy_https_port))
-        else:
-            bashrc.write('export http_proxy=http://{0}:{1}'.format(options.proxy,
-                                                                   options.proxy_http_port))
-
-            bashrc.write('export HTTPS_PROXY=https://{0}:{1}'.format(options.proxy,
-                                                                     options.proxy_https_port))
-
-    LOGGER.info("Updating Copy to %s/.boto", home)
-    shutil.copy2(home + '/boto.cfg1', home + '/.boto')
 
 
 def parse_args():
