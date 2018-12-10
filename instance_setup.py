@@ -32,6 +32,7 @@ AN_NODE_PREFIX = 'an-node'
 #CUSTOM_DATA_DIR = '/var/lib/waagent/CustomData'
 CUSTOM_DATA_DIR = '/tmp/customBlob'
 MDATA_URL = "http://169.254.169.254/metadata/instance{0}?api-version=2017-08-01&format=text"
+PROVISIONED_FILE = '/var/lib/waagent/provisioned'
 
 
 def generate_key_pair():
@@ -632,6 +633,10 @@ def configure_instance(options):
         LOGGER.exception("Cant identify instance {0}".format(e))
         sys.exit(3)
 
+    while not os.path.isfile(PROVISIONED_FILE):
+        LOGGER.info("Waiting for provisioning to finish")
+        sleep(10)
+
     if 'an-node' in options.instance_name:
         # an-node
         options.hostname = AN_NODE_PREFIX
@@ -713,6 +718,9 @@ def configure_instance(options):
             os.system('tune2fs -m 1 /dev/sda1')
         except OSError:
             pass
+
+    LOGGER.info("Instance setup finished")
+    subprocess.call('/root/setup/fix-conf', shell=True)
 
 
 def parse_args():
