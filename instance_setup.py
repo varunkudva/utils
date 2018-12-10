@@ -1,5 +1,18 @@
 #!/usr/bin/python
 # vim:set ts=4 sw=4 expandtab:
+
+'''
+Copyright (C) 2013-2018 by Hewlett Packard Enterprise Development LP
+All Rights Reserved.
+
+This software is an unpublished work and is protected by copyright and
+trade secret law.  Unauthorized copying, redistribution or other use of
+this work is prohibited.
+
+The above notice of copyright on this source code product does not indicate
+any actual or intended publication of such source code.
+'''
+
 import os
 import re
 import sys
@@ -248,6 +261,8 @@ def generate_hosts(options):
             "      copy: content='{0}' dest=/tmp/node mode=644 force=yes".format(hostname[-1]))
         yml.append('    - name: Disable epel repo')
         yml.append('      command: /usr/bin/yum-config-manager --disable epel')
+        yml.append('    - name: fix hostname in conf')
+        yml.append('      command: /root/setup/fix-conf')
 
     if options.domain == 'niarasystems.com':
         # This is only needed if the domain name is niarasystems.com.
@@ -720,7 +735,6 @@ def configure_instance(options):
             pass
 
     LOGGER.info("Instance setup finished")
-    subprocess.call('/root/setup/fix-conf', shell=True)
 
 
 def parse_args():
