@@ -1,0 +1,75 @@
+""""""""""""""""""""""
+" vkudvas' vimrc file
+" 2016/04/02
+""""""""""""""""""""""
+
+""""python with virtualenv support
+py << EOF
+import os
+import sys
+if 'VIRTUAL_ENV' in os.environ:
+  project_base_dir = os.environ['VIRTUAL_ENV']
+  activate_this = os.path.join(project_base_dir, 'bin/activate_this.py')
+  execfile(activate_this, dict(__file__=activate_this))
+EOF
+""""//python with virtualenv support
+
+"Set clipboard copy paste
+set clipboard=unnamed
+
+""" NERDTree settings
+""" //NERDTree settings
+
+"""""""""""""""Pymode settings"""""""""""""""""""""
+let g:pymode_rope = 0
+
+" Documentation
+let g:pymode_doc = 1
+let g:pymode_doc_key = 'K'
+
+"Linting
+let g:pymode_lint = 1
+let g:pymode_lint_checker = ["pylint", "pyflakes", "pep8"]
+" Auto check on save
+let g:pymode_lint_write = 0
+let g:pymode_lint_sort = ['E', 'C', 'I']
+let g:pymode_lint_signs = 0
+
+
+" Support virtualenv
+let g:pymode_virtualenv = 1
+
+" Enable breakpoints plugin
+let g:pymode_breakpoint = 1
+let g:pymode_breakpoint_bind = '<leader>b'
+
+" syntax highlighting
+let g:pymode_syntax = 1
+let g:pymode_syntax_all = 1
+let g:pymode_syntax_indent_errors = g:pymode_syntax_all
+let g:pymode_syntax_space_errors = g:pymode_syntax_all
+
+" Don't autofold code
+let g:pymode_folding = 0
+"""""""""""""""//Pymode settings"""""""""""""""""""""
+
+""""colorscheme
+let g:zenburn_old_Visual = 1
+let g:zenburn_alternate_Visual = 1
+"let g:zenburn_high_Contrast = 1
+"colorscheme zenburn
+""""//colorscheme
+
+set encoding=utf-8
+set number
+set autochdir
+set ruler
+
+set showcmd
+set tabstop=4
+set softtabstop=4
+set shiftwidth=4
+"set textwidth=79
+set expandtab
+set autoindent
+set fileformat=unix

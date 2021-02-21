@@ -1,0 +1,21 @@
+#GIT Aliases
+alias gchg="git status . | grep modified | cut -d: -f 2 | xargs echo"
+alias grst="git checkout -- $@"
+alias gsts="git status"
+alias gstg="gchg | xargs git add; gchg"
+alias gunstg="git unstage $@"
+alias gget="git pull --rebase origin $@"
+#alias gput="git push"
+alias gdiff="git difftool $@"
+alias gsdiff="git diff $@"
+alias gsdiffca="git diff --cached $@"
+alias galias="alias | grep git"
+#alias gpull="git fetch; git pull --rebase origin $@"
+alias gpush="git push origin $@"
+alias glasttag="git describe --tags \`git rev-list --tags --max-count=1\`"
+alias gunpushed="git log --stat origin/\`git branch -l | grep "^\*" | cut -d' ' -f2\`..HEAD"
+alias gbr='git branch -l'
+alias gbrdiff="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative $@"
+alias gstags="git tag --contains $@"
+alias gstshow="git stash show -p stash@{$@}"
+

@@ -4,43 +4,44 @@
 """"""""""""""""""""""
 
 """""""""""""""""""""""""" Vundle configuration"""""""""""""""""""""""""
-set nocompatible              " required
-filetype off                  " required
-
-" set the runtime path to include Vundle and initialize
-set rtp+=~/.vim/bundle/Vundle.vim
-call vundle#begin()
-
-" alternatively, pass a path where Vundle should install plugins
-"call vundle#begin('~/some/path/here')
-
-" let Vundle manage Vundle, required
-Plugin 'gmarik/Vundle.vim'
-
-" Add all your plugins here (note older versions of Vundle used Bundle
-" instead of Plugin)
-"
-
-"filesystem
+ set nocompatible              " required
+ filetype off                  " required
+ "
+ "" set the runtime path to include Vundle and initialize
+ set rtp+=~/.vim/bundle/Vundle.vim
+ call vundle#begin()
+ "
+ "" alternatively, pass a path where Vundle should install plugins
+ ""call vundle#begin('~/some/path/here')
+ "
+ "" let Vundle manage Vundle, required
+ Plugin 'gmarik/Vundle.vim'
+ "
+ "" Add all your plugins here (note older versions of Vundle used Bundle
+ "" instead of Plugin)
+ ""
+ "
+ ""filesystem
 Plugin 'scrooloose/nerdtree'
-Plugin 'jistr/vim-nerdtree-tabs'
-let NERDTreeIgnore=['\.pyc$', '\~$'] "ignore files in NERDTree
+"Plugin 'jistr/vim-nerdtree-tabs'
 Plugin 'kien/ctrlp.vim'
-Plugin 'jnurmine/Zenburn'
-Plugin 'klen/python-mode'
-Plugin 'majutsushi/tagbar'
-Plugin 'morhetz/gruvbox'
+"Plugin 'jnurmine/Zenburn'
+"Plugin 'klen/python-mode'
+"Plugin 'majutsushi/tagbar'
+ "Plugin 'morhetz/gruvbox'
 Plugin 'altercation/vim-colors-solarized'
-Plugin 'davidhalter/jedi-vim'
+ "Plugin 'davidhalter/jedi-vim'
 Plugin 'vim-airline/vim-airline'
 Plugin 'vim-airline/vim-airline-themes'
-
-
-" All of your Plugins must be added before the following line
-call vundle#end()            " required
-filetype plugin indent on    " required
+Plugin 'tpope/vim-fugitive'
+ "
+ "
+ "" All of your Plugins must be added before the following line
+ call vundle#end()            " required
+ filetype plugin indent on    " required
 """""""""""""""""""""""""" Vundle configuration"""""""""""""""""""""""""
 
+filetype on
 "automatic reloading of vimrc
 autocmd! Bufwritepost .vimrc source %
 
@@ -48,29 +49,43 @@ set tags=~/tags
 
 "Set clipboard copy paste
 "set clipboard=unnamed
+"let g:ctrlp_user_command = 'find %s -type f'
+let g:ctrlp_max_depth = 40
+let g:ctrlp_max_files = 0
+let g:ctrlp_use_caching = 1
+let g:ctrlp_clear_cache_on_exit = 1
 
 """ NERDTree settings
+let NERDTreeIgnore=['\.pyc$', '\~$'] "ignore files in NERDTree
 """ //NERDTree settings
-let g:ctrlp_max_depth = 40
-let g:ctrlp_max_files = 10000
-"set background=dark
+
 """"colorscheme
+"let g:solarized_termcolors=256
+set background=light
+colorscheme solarized
 "let g:zenburn_old_Visual = 1
 "let g:zenburn_force_dark_Background = 1
 "let g:zenburn_alternate_Visual = 1
 "let g:zenburn_high_Contrast = 1
 "colorscheme zenburn
-let g:solarized_contrast="high"
 "let g:solarized_visibility="high"
-colorscheme solarized
+let g:solarized_contrast="high"
+"colorscheme desert
 """"//colorscheme
+
+""" airline
+set laststatus=2
+let g:airline#extensions#whitespace#checks=[]
+let g:AirlineTheme='base16_ashes'
+""" //airline
+
 
 "Set mouse and backspace
 "set mouse=a
 set bs=2
 " allow backspacing over everything in insert mode
 set backspace=indent,eol,start
-set cursorline
+"set cursorline
 
 "I dont like swapfiles
 set noswapfile
@@ -78,15 +93,17 @@ set noswapfile
 " Rebind <Leader> key
 let mapleader = ";"
 
-nmap <C-O> :!git add %<CR><CR>
+nmap <C-O> :Gwrite<CR><CR>
 nmap <C-X> :files<CR>
-nmap <leader>s :cs find s <C-R>=expand("<cword>")<CR><CR>      
-nmap <leader>g :cs find g <C-R>=expand("<cword>")<CR><CR>      
-nmap <leader>c :cs find c <C-R>=expand("<cword>")<CR><CR>      
-"nmap <C-Q> :norm i//<CR>
+nmap <leader>s :cs find s <C-R>=expand("<cword>")<CR><CR>
+nmap <leader>g :cs find g <C-R>=expand("<cword>")<CR><CR>
+nmap <leader>c :cs find c <C-R>=expand("<cword>")<CR><CR>
 nmap <C-n> :NERDTreeToggle<CR>
+
 nmap <leader>t :TagbarToggle<CR>
 nmap <leader>n :set invnumber<CR>
+nmap <leader>L :PymodeLintToggle<CR>
+nmap <leader>l :PymodeLint<CR>
 " nmap <C-E> :call ShowFuncName()<CR>
 
 " easier moving of code blocks
@@ -94,6 +111,7 @@ nmap <leader>n :set invnumber<CR>
 " then press ``>`` several times.
 vnoremap < <gv  " better indentation
 vnoremap > >gv  " better indentation
+vnoremap <C-Q> :norm i//<CR>
 
 syntax on
 
@@ -156,7 +174,7 @@ if has("autocmd")
   au!
 
   " For all text files set 'textwidth' to 78 characters.
-  autocmd FileType text setlocal textwidth=78
+  "autocmd FileType text setlocal textwidth=78
 
   " When editing a file, always jump to the last known cursor position.
   " Don't do it when the position is invalid or when inside an event handler
@@ -168,8 +186,10 @@ if has("autocmd")
     \   exe "normal! g`\"" |
     \ endif
 
-  augroup END
+  " Remove trailing whitespace on write
+  autocmd BufWritePre * %s/\s\+$//e
 
+  augroup END
 else
 
   set autoindent		" always set autoindenting on
@@ -186,6 +206,7 @@ endif
 
 "show matching braces
 ""set showmatch
+"autocmd ColorScheme * highlight ExtraWhitespace ctermbg=red guibg=red
 set autoindent                " always set autoindenting on
 set ts=4
 set sw=4
@@ -193,8 +214,11 @@ set expandtab
 set cinoptions=:0,(0
 set nobackup
 set wrap
-:au BufWinEnter *.[ch] let w:m2=matchadd('ErrorMsg', '\%81v.', -1)
+:au BufWinEnter *.[ch],*.py let w:m2=matchadd('ErrorMsg', '\%80v.', -1)
 set autoread
 set hlsearch
 set incsearch
 set ignorecase
+set modeline
+au BufRead,BufNewFile *.[c,sh] setlocal textwidth=80
+autocmd BufWritePre * :%s/\s+$//e
