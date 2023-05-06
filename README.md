@@ -6,3 +6,5 @@ All personal utils for coding...
 - vim plugins
 - colorschemes
 - terminal-palettes
+- intellij settings
+
